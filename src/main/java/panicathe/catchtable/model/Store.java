@@ -12,7 +12,8 @@ public class Store {
     private Long id;
 
     private String name;
-    private String location;
+    private Double lon;
+    private Double lat;
     private String description;
 
     @ManyToOne

@@ -12,7 +12,6 @@ public class Partner {
     private Long id;
 
     private String name;
-    private String email;
     private String password;
 
     @OneToMany(mappedBy = "partner", cascade = CascadeType.ALL)

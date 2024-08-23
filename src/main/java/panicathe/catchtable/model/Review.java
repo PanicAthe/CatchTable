@@ -11,7 +11,7 @@ public class Review {
     private Long id;
 
     private String content;
-    private int rating;
+    private int rating; // 0 ~ 5점
 
     @ManyToOne
     @JoinColumn(name = "store_id")

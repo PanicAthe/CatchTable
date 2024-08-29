@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import panicathe.catchtable.dto.ResponseDTO;
 import panicathe.catchtable.dto.UserDTO;
 import panicathe.catchtable.service.AuthService;
 
@@ -17,7 +18,7 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/signup/user")
-    public ResponseEntity<String> userSignUp(@RequestBody UserDTO user) {
+    public ResponseEntity<ResponseDTO> userSignUp(@RequestBody UserDTO user) {
         return authService.userSignUp(user);
     }
 }

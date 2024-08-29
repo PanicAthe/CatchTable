@@ -4,7 +4,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import panicathe.catchtable.dto.ResponseDTO;
 import panicathe.catchtable.dto.UserDTO;
+import panicathe.catchtable.exception.CustomException;
+import panicathe.catchtable.exception.ErrorCode;
 import panicathe.catchtable.mapper.UserMapper;
 import panicathe.catchtable.model.User;
 import panicathe.catchtable.repository.PartnerRepository;
@@ -18,20 +21,21 @@ public class AuthService {
     private final PartnerRepository partnerRepository;
 
     // 1 유저 등록
-    public ResponseEntity<String> userSignUp(UserDTO userDTO) {
+    public ResponseEntity<ResponseDTO> userSignUp(UserDTO userDTO) {
 
         if (userRepository.existsByPhone(userDTO.getPhone())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("중복된 전화번호입니다.");
+            throw new CustomException(ErrorCode.USER_PHONE_ALREADY_REGISTERED);
         }
         if (userRepository.existsByNickname(userDTO.getNickname())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("중복된 닉네임입니다.");
+            throw new CustomException(ErrorCode.USER_NICKNAME_ALREADY_REGISTERED);
         }
 
         User newUser = UserMapper.toEntity(userDTO);
 
         userRepository.save(newUser);
 
-        return ResponseEntity.ok("회원가입이 완료되었습니다.");
+        ResponseDTO responseDTO = new ResponseDTO("회원가입이 완료되었습니다.", HttpStatus.OK.value());
+        return ResponseEntity.ok(responseDTO);
     }
 
 

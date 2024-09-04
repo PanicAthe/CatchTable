@@ -9,8 +9,6 @@ import lombok.Data;
 @Builder
 public class StoreDTO {
 
-    private Long id;
-
     @NotBlank
     private String name;
 
@@ -23,6 +21,4 @@ public class StoreDTO {
     @NotBlank
     private String description;
 
-    @NotNull
-    private Long partnerId;
 }

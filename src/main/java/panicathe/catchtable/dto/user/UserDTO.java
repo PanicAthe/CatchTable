@@ -1,4 +1,4 @@
-package panicathe.catchtable.dto;
+package panicathe.catchtable.dto.user;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
@@ -8,14 +8,13 @@ import lombok.Data;
 @Builder
 public class UserDTO {
 
-    private Long id;
-
     @NotBlank
-    private String nickname;
+    private String email;
 
     @NotBlank
     private String phone;
 
     @NotBlank
     private String password;
+
 }

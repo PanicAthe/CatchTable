@@ -25,7 +25,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PartnerRepository partnerRepository;
     private final JwtProvider jwtProvider;
-    private PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     // 1 유저 등록
     public ResponseEntity<ResponseDTO> userSignUp(UserDTO userDTO) {
@@ -46,7 +46,7 @@ public class AuthService {
                 .password(passwordEncoder.encode(userDTO.getPassword()))
                 .build());
 
-        ResponseDTO responseDTO = new ResponseDTO("회원가입이 완료되었습니다.", HttpStatus.OK.value());
+        ResponseDTO responseDTO = new ResponseDTO("회원가입이 완료되었습니다.", HttpStatus.OK, null);
         return ResponseEntity.ok(responseDTO);
     }
 
@@ -65,7 +65,7 @@ public class AuthService {
                 .email(partnerDTO.getEmail())
                 .password(passwordEncoder.encode(partnerDTO.getPassword())).build());
 
-        ResponseDTO responseDTO = new ResponseDTO("파트너 가입이 완료되었습니다.", HttpStatus.OK.value());
+        ResponseDTO responseDTO = new ResponseDTO("파트너 가입이 완료되었습니다.", HttpStatus.OK, null);
         return ResponseEntity.ok(responseDTO);
     }
 
@@ -95,7 +95,7 @@ public class AuthService {
         }
 
         System.out.println(token);
-        ResponseDTO responseDTO = new ResponseDTO("로그인 성공.", HttpStatus.OK.value());
+        ResponseDTO responseDTO = new ResponseDTO("로그인 성공.", HttpStatus.OK, token);
         return ResponseEntity.ok(responseDTO);
     }
 
@@ -125,16 +125,61 @@ public class AuthService {
         }
 
         System.out.println(token);
-        ResponseDTO responseDTO = new ResponseDTO("로그인 성공.", HttpStatus.OK.value());
+        ResponseDTO responseDTO = new ResponseDTO("로그인 성공.", HttpStatus.OK, token);
         return ResponseEntity.ok(responseDTO);
     }
 
     // 파트너 정보 수정
-    
+    public ResponseEntity<ResponseDTO> updatePartnerInfo(PartnerDTO partnerDTO, String email) {
+        Partner partner = partnerRepository.findByEmail(email);
+        if (partner == null) {
+            throw new CustomException(ErrorCode.PARTNER_NOT_EXIST);
+        }
+
+        partner.setEmail(partnerDTO.getEmail());
+        // 파트너 정보 업데이트
+        partner.setPassword(passwordEncoder.encode(partnerDTO.getPassword()));
+        partnerRepository.save(partner);
+
+        return ResponseEntity.ok(new ResponseDTO("파트너 정보 수정이 완료되었습니다.", HttpStatus.OK, null));
+    }
+
+
     // 유저 정보 수정
-    
+    public ResponseEntity<ResponseDTO> updateUserInfo(UserDTO userDTO, String email) {
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            throw new CustomException(ErrorCode.USER_NOT_EXIST);
+        }
+
+        // 유저 정보 업데이트
+        user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
+        userRepository.save(user);
+
+        return ResponseEntity.ok(new ResponseDTO("유저 정보 수정이 완료되었습니다.", HttpStatus.OK, null));
+    }
+
     // 파트너 계정 삭제
-    
+    public ResponseEntity<ResponseDTO> deletePartner(String email) {
+        Partner partner = partnerRepository.findByEmail(email);
+        if (partner == null) {
+            throw new CustomException(ErrorCode.PARTNER_NOT_EXIST);
+        }
+
+        partnerRepository.delete(partner);
+        return ResponseEntity.ok(new ResponseDTO("파트너 계정이 삭제되었습니다.", HttpStatus.OK, null));
+    }
+
     // 유저 계정 삭제
+    public ResponseEntity<ResponseDTO> deleteUser(String email) {
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            throw new CustomException(ErrorCode.USER_NOT_EXIST);
+        }
+
+        userRepository.delete(user);
+        return ResponseEntity.ok(new ResponseDTO("유저 계정이 삭제되었습니다.", HttpStatus.OK, null));
+    }
+
 
 }

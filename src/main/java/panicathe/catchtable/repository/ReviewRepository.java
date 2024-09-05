@@ -5,5 +5,5 @@ import org.springframework.stereotype.Repository;
 import panicathe.catchtable.model.Review;
 
 @Repository
-public interface ReviewRepostiroy extends JpaRepository<Review, Integer> {
+public interface ReviewRepository extends JpaRepository<Review, Integer> {
 }

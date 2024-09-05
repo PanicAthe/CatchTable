@@ -1,11 +1,13 @@
 package panicathe.catchtable.model;
 
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Data;
 import java.time.LocalDateTime;
 
 @Entity
 @Data
+@Builder
 public class Reservation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

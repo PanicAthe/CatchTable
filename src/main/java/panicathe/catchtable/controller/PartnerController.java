@@ -28,12 +28,12 @@ public class PartnerController {
         return ResponseEntity.ok(email + " details");
     }
 
-    @PostMapping
-    public ResponseEntity<ResponseDTO> addStore(StoreDTO storeDTO, @AuthenticationPrincipal String email) {
+    @PostMapping("/store/add")
+    public ResponseEntity<ResponseDTO> addStore(@RequestBody StoreDTO storeDTO, @AuthenticationPrincipal String email) {
         return partnerService.addStore(storeDTO, email);
     }
 
-    @GetMapping
+    @GetMapping("/store")
     public ResponseEntity<ResponseDTO> getStores(@AuthenticationPrincipal String email) {
         return partnerService.getStores(email);
     }

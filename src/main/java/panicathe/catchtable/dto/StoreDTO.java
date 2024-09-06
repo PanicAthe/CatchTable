@@ -9,6 +9,8 @@ import lombok.Data;
 @Builder
 public class StoreDTO {
 
+    private Long id;
+
     @NotBlank
     private String name;
 

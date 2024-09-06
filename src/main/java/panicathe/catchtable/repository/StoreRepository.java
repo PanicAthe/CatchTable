@@ -12,4 +12,6 @@ public interface StoreRepository extends JpaRepository<Store, Integer> {
     Store findByName(String name);
 
     List<Store> findAllByPartner(Partner partner);
+
+    Store findByIdAndPartner(Long storeId, Partner partner);
 }

@@ -1,6 +1,5 @@
 package panicathe.catchtable.dto;
 
-import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Data;
 
@@ -8,17 +7,10 @@ import java.time.LocalDateTime;
 
 @Data
 @Builder
-public class StoreReservationDTO {
-
-    @NotNull
-    private Long storeId;
-
-    @NotNull
+public class ReservationDetailDTO {
+    private Long reservationId;
+    private String storeName;
     private LocalDateTime reservationTime;
-
-    @NotNull
-    private Long userId;
-
-    @NotNull
     private boolean reservationConfirmed;
+    private boolean visitedConfirmed;
 }

@@ -9,6 +9,7 @@ import lombok.Data;
 @Builder
 public class StoreDetailDTO {
 
+    @NotNull
     private Long id;
 
     @NotBlank

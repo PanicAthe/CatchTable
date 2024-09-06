@@ -8,6 +8,8 @@ import lombok.Data;
 @Builder
 public class UserDTO {
 
+    private Long id;
+
     @NotBlank
     private String email;
 

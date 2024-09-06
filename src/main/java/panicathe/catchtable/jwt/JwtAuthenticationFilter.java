@@ -6,15 +6,12 @@ import java.util.List;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContext;
 
 import org.springframework.util.StringUtils;
 import jakarta.servlet.FilterChain;
@@ -22,8 +19,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import panicathe.catchtable.model.Partner;
-import panicathe.catchtable.model.User;
 import panicathe.catchtable.repository.PartnerRepository;
 import panicathe.catchtable.repository.UserRepository;
 
@@ -58,7 +53,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             System.out.println("이메일" + userEmail);
             System.out.println("롤" + role); //디버깅
-            ;
             // 검증 실패 시, 다음 필터로 요청을 넘긴다.
             if (userEmail == null || role == null) {
                 filterChain.doFilter(request, response);

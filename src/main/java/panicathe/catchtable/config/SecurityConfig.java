@@ -78,7 +78,7 @@ class FailedAuthenticationEntryPoint implements AuthenticationEntryPoint {
     // 인증 실패 시 클라이언트에게 응답할 로직
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
-                         AuthenticationException authException) throws IOException, ServletException {
+                         AuthenticationException authException) throws IOException {
         response.setContentType("application/json");
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         response.getWriter().write("{\"code\":\"NP\", \"message\": \"No Permission\"}");

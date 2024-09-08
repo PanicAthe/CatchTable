@@ -1,32 +1,28 @@
-package panicathe.catchtable.dto;
+package panicathe.catchtable.dto.store;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Data;
+import panicathe.catchtable.dto.review.ReviewDetailForUserDTO;
+
+import java.util.List;
 
 @Data
 @Builder
 public class StoreDetailDTO {
 
-    @NotNull
     private Long id;
 
-    @NotBlank
     private String name;
 
-    @NotNull
     private Double lon;
 
-    @NotNull
     private Double lat;
 
-    @NotBlank
     private String description;
 
-    @NotNull
     private double averageRating;
 
-    @NotNull
     private int reviewCount;
+
+    private List<ReviewDetailForUserDTO> reviews;
 }

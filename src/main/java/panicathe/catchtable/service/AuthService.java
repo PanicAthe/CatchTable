@@ -1,15 +1,18 @@
 package panicathe.catchtable.service;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import panicathe.catchtable.dto.PartnerDTO;
+import org.springframework.transaction.annotation.Transactional;
 import panicathe.catchtable.dto.ResponseDTO;
+import panicathe.catchtable.dto.partner.PartnerDTO;
 import panicathe.catchtable.dto.user.UserDTO;
-import panicathe.catchtable.dto.user.UserLoginDTO;
+import panicathe.catchtable.dto.LoginDTO;
+import panicathe.catchtable.dto.user.UserSignUpDTO;
 import panicathe.catchtable.exception.CustomException;
 import panicathe.catchtable.exception.ErrorCode;
 import panicathe.catchtable.jwt.JwtProvider;
@@ -27,8 +30,9 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    // 1 유저 등록
-    public ResponseEntity<ResponseDTO> userSignUp(UserDTO userDTO) {
+    // 유저 회원가입
+    @Transactional
+    public ResponseEntity<ResponseDTO> userSignUp(UserSignUpDTO userDTO) {
 
         if (userRepository.existsByPhone(userDTO.getPhone())) {
             throw new CustomException(ErrorCode.USER_PHONE_ALREADY_REGISTERED);
@@ -50,8 +54,8 @@ public class AuthService {
         return ResponseEntity.ok(responseDTO);
     }
 
-
-    // 1 파트너 등록
+    // 파트너 가입
+    @Transactional
     public ResponseEntity<ResponseDTO> partnerSignUp(PartnerDTO partnerDTO) {
 
         if(partnerRepository.existsByEmail(partnerDTO.getEmail())){
@@ -70,7 +74,7 @@ public class AuthService {
     }
 
     // 파트너 로그인
-    public ResponseEntity<ResponseDTO> partnerLogIn(PartnerDTO dto) {
+    public ResponseEntity<ResponseDTO> partnerLogIn(LoginDTO dto) {
 
         String token = null;
 
@@ -80,7 +84,7 @@ public class AuthService {
             Partner partner = partnerRepository.findByEmail(email);
 
             if(partner == null)
-               throw new CustomException(ErrorCode.PARTNER_NOT_EXIST);
+                throw new CustomException(ErrorCode.PARTNER_NOT_EXIST);
 
             String password = dto.getPassword();
             String encodedPassword = partner.getPassword();
@@ -100,7 +104,7 @@ public class AuthService {
     }
 
     // 유저 로그인
-    public ResponseEntity<ResponseDTO> userLogIn(UserLoginDTO dto) {
+    public ResponseEntity<ResponseDTO> userLogIn(LoginDTO dto) {
 
         String token = null;
 
@@ -130,6 +134,7 @@ public class AuthService {
     }
 
     // 파트너 정보 수정
+    @Transactional
     public ResponseEntity<ResponseDTO> updatePartnerInfo(PartnerDTO partnerDTO, String email) {
         Partner partner = partnerRepository.findByEmail(email);
         if (partner == null) {
@@ -144,8 +149,8 @@ public class AuthService {
         return ResponseEntity.ok(new ResponseDTO("파트너 정보 수정이 완료되었습니다.", HttpStatus.OK, null));
     }
 
-
     // 유저 정보 수정
+    @Transactional
     public ResponseEntity<ResponseDTO> updateUserInfo(UserDTO userDTO, String email) {
         User user = userRepository.findByEmail(email);
         if (user == null) {
@@ -160,6 +165,7 @@ public class AuthService {
     }
 
     // 파트너 계정 삭제
+    @Transactional
     public ResponseEntity<ResponseDTO> deletePartner(String email) {
         Partner partner = partnerRepository.findByEmail(email);
         if (partner == null) {
@@ -171,6 +177,7 @@ public class AuthService {
     }
 
     // 유저 계정 삭제
+    @Transactional
     public ResponseEntity<ResponseDTO> deleteUser(String email) {
         User user = userRepository.findByEmail(email);
         if (user == null) {

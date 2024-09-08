@@ -1,4 +1,4 @@
-package panicathe.catchtable.dto;
+package panicathe.catchtable.dto.reservation;
 
 import lombok.Builder;
 import lombok.Data;
@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 public class ReservationDetailDTO {
     private Long reservationId;
     private String storeName;
-    private LocalDateTime reservationTime;
+    private String reservationTime;
     private boolean reservationConfirmed;
     private boolean visitedConfirmed;
 }

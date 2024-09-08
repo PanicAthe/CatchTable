@@ -1,10 +1,18 @@
 package panicathe.catchtable.service;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import panicathe.catchtable.dto.*;
+import panicathe.catchtable.dto.reservation.ReservationTimeTableDTO;
+import panicathe.catchtable.dto.review.ReviewDetailForPartnerDTO;
+import panicathe.catchtable.dto.review.ReviewDetailForUserDTO;
+import panicathe.catchtable.dto.store.CreateOrUpdateStoreDTO;
+import panicathe.catchtable.dto.store.StoreDTO;
 import panicathe.catchtable.exception.CustomException;
 import panicathe.catchtable.exception.ErrorCode;
 import panicathe.catchtable.model.Partner;
@@ -33,34 +41,43 @@ public class PartnerService {
     private final StoreRepository storeRepository;
     private final ReviewRepository reviewRepository;
     private final ReservationRepository reservationRepository;
+    private final Logger logger = LoggerFactory.getLogger(PartnerService.class);
 
-    // 1 상점 정보 등록
-    public ResponseEntity<ResponseDTO> addStore(StoreDTO storeDTO, String email) {
+    // 상점 등록
+    @Transactional
+    public ResponseEntity<ResponseDTO> addStore(CreateOrUpdateStoreDTO storeDTO, String email) {
 
         Partner partner = partnerRepository.findByEmail(email);
-        if(partner == null)
+        if (partner == null) {
             throw new CustomException(ErrorCode.PARTNER_NOT_EXIST);
+        }
 
-        if(storeRepository.findByName(storeDTO.getName()) != null)
+        if (storeRepository.findByName(storeDTO.getName()) != null) {
             throw new CustomException(ErrorCode.STORE_NAME_ALREADY_REGISTERED);
-        
-        storeRepository.save(Store.builder()
-                        .partner(partner)
-                        .lat(storeDTO.getLat())
-                        .lon(storeDTO.getLon())
-                        .description(storeDTO.getDescription())
-                        .name(storeDTO.getName())
-                .build());
+        }
+
+        Store store = Store.builder()
+                .partner(partner)
+                .lat(storeDTO.getLat())
+                .lon(storeDTO.getLon())
+                .description(storeDTO.getDescription())
+                .name(storeDTO.getName())
+                .build();
+
+        storeRepository.save(store);
+
+        logger.info("Store '{}' registered successfully by partner '{}'", storeDTO.getName(), email);
 
         ResponseDTO responseDTO = new ResponseDTO("상점 등록이 완료되었습니다.", HttpStatus.OK, null);
         return ResponseEntity.ok(responseDTO);
     }
 
-    // 1 내 상점 정보 조회
+    // 내 상점 조회
     public ResponseEntity<ResponseDTO> getStores(String email) {
         Partner partner = partnerRepository.findByEmail(email);
-        if(partner == null)
+        if (partner == null) {
             throw new CustomException(ErrorCode.PARTNER_NOT_EXIST);
+        }
 
         List<Store> stores = storeRepository.findAllByPartner(partner);
 
@@ -70,18 +87,17 @@ public class PartnerService {
                         .name(store.getName())
                         .lat(store.getLat())
                         .lon(store.getLon())
-                        .description(store.getDescription())
+                        .averageRating(store.getAverageRating())
+                        .reviewCount(store.getReviews().size())
                         .build())
-                .toList();
-
+                .collect(Collectors.toList());
 
         ResponseDTO responseDTO = new ResponseDTO("파트너의 상점 조회 완료.", HttpStatus.OK, storeDTOs);
 
         return ResponseEntity.ok(responseDTO);
     }
 
-
-    // 1 상점 리뷰 조회
+    // 상점 리뷰 조회
     public ResponseEntity<ResponseDTO> getStoreReviews(String email, Long storeId) {
         Partner partner = partnerRepository.findByEmail(email);
         if (partner == null) {
@@ -93,21 +109,20 @@ public class PartnerService {
             throw new CustomException(ErrorCode.STORE_NOT_FOUND);
         }
 
-        List<ReviewDTO> reviewDTOs = store.getReviews().stream()
-                .map(review -> ReviewDTO.builder()
+        List<ReviewDetailForPartnerDTO> reviewDTOs = store.getReviews().stream()
+                .map(review -> ReviewDetailForPartnerDTO.builder()
                         .id(review.getId())
                         .content(review.getContent())
                         .rating(review.getRating())
-                        .reservationId(review.getReservation().getId())
                         .build())
-                .toList();
+                .collect(Collectors.toList());
 
         ResponseDTO responseDTO = new ResponseDTO("상점 리뷰 조회 완료", HttpStatus.OK, reviewDTOs);
         return ResponseEntity.ok(responseDTO);
     }
 
-
-    // 2 상점 특정 리뷰 삭제
+    // 상점 특정 리뷰 삭제
+    @Transactional
     public ResponseEntity<ResponseDTO> deleteReview(String email, Long storeId, Long reviewId) {
         Partner partner = partnerRepository.findByEmail(email);
         if (partner == null) {
@@ -126,46 +141,43 @@ public class PartnerService {
 
         reviewRepository.delete(review);
 
+        logger.info("Review with ID '{}' deleted successfully from store '{}'", reviewId, storeId);
+
         ResponseDTO responseDTO = new ResponseDTO("리뷰 삭제 완료", HttpStatus.OK, null);
         return ResponseEntity.ok(responseDTO);
     }
 
-
     // 파트너의 상점 예약 정보 조회 (해당 날짜만)
     public ResponseEntity<ResponseDTO> getStoreReservations(String email, LocalDate date) {
-        // 파트너 확인
         Partner partner = partnerRepository.findByEmail(email);
         if (partner == null) {
             throw new CustomException(ErrorCode.PARTNER_NOT_EXIST);
         }
 
-        // 파트너의 모든 상점 조회
         List<Store> stores = storeRepository.findAllByPartner(partner);
         if (stores.isEmpty()) {
             throw new CustomException(ErrorCode.STORE_NOT_FOUND);
         }
 
-        // 선택된 날짜의 시작과 끝 시간 계산ㅇ
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
 
-        // 모든 상점의 해당 날짜에 속하는 예약 조회
         List<Reservation> reservations = reservationRepository.findByStoreInAndReservationTimeBetween(stores, startOfDay, endOfDay);
 
-        // 예약 정보를 시간순으로 정렬하여 날짜별로 그룹화
         Map<LocalDate, List<ReservationTimeTableDTO>> reservationTimeTables = reservations.stream()
                 .collect(Collectors.groupingBy(
                         reservation -> reservation.getReservationTime().toLocalDate(),
                         Collectors.collectingAndThen(
                                 Collectors.toList(),
                                 list -> list.stream()
-                                        .sorted(Comparator.comparing(Reservation::getReservationTime))  // 시간 순으로 정렬
-                                        .map(reservation -> new ReservationTimeTableDTO(
-                                                reservation.getReservationTime().toLocalTime(),
-                                                reservation.isReservationConfirmed(),
-                                                reservation.isVisitedConfirmed(),
-                                                reservation.getUser().getPhone()  // 예약자의 전화번호
-                                        ))
+                                        .sorted(Comparator.comparing(Reservation::getReservationTime))
+                                        .map(reservation -> ReservationTimeTableDTO.builder()
+                                                .reservationId(reservation.getId())
+                                                .reservationTime(reservation.getReservationTime().toString())
+                                                .reservationConfirmed(reservation.isReservationConfirmed())
+                                                .visitedConfirmed(reservation.isVisitedConfirmed())
+                                                .userPhone(reservation.getUser().getPhone())
+                                                .build())
                                         .collect(Collectors.toList())
                         )
                 ));
@@ -174,7 +186,8 @@ public class PartnerService {
         return ResponseEntity.ok(responseDTO);
     }
 
-    // 4 예약 승인
+    // 예약 승인
+    @Transactional
     public ResponseEntity<ResponseDTO> confirmReservation(String email, Long storeId, Long reservationId) {
         Partner partner = partnerRepository.findByEmail(email);
         if (partner == null) {
@@ -194,11 +207,14 @@ public class PartnerService {
         reservation.setReservationConfirmed(true);
         reservationRepository.save(reservation);
 
+        logger.info("Reservation with ID '{}' confirmed for store '{}'", reservationId, storeId);
+
         ResponseDTO responseDTO = new ResponseDTO("예약이 승인되었습니다.", HttpStatus.OK, null);
         return ResponseEntity.ok(responseDTO);
     }
 
-    // 5 예약 취소
+    // 예약 취소
+    @Transactional
     public ResponseEntity<ResponseDTO> cancelReservation(String email, Long storeId, Long reservationId) {
         Partner partner = partnerRepository.findByEmail(email);
         if (partner == null) {
@@ -218,12 +234,15 @@ public class PartnerService {
         reservation.setReservationConfirmed(false);
         reservationRepository.save(reservation);
 
+        logger.info("Reservation with ID '{}' cancelled for store '{}'", reservationId, storeId);
+
         ResponseDTO responseDTO = new ResponseDTO("예약이 취소되었습니다.", HttpStatus.OK, null);
         return ResponseEntity.ok(responseDTO);
     }
 
-    // 6 파트너의 상점 정보 수정
-    public ResponseEntity<ResponseDTO> updateStore(String email, Long storeId, StoreDTO storeDTO) {
+    // 상점 정보 수정
+    @Transactional
+    public ResponseEntity<ResponseDTO> updateStore(String email, Long storeId, CreateOrUpdateStoreDTO storeDTO) {
         Partner partner = partnerRepository.findByEmail(email);
         if (partner == null) {
             throw new CustomException(ErrorCode.PARTNER_NOT_EXIST);
@@ -234,6 +253,10 @@ public class PartnerService {
             throw new CustomException(ErrorCode.STORE_NOT_FOUND);
         }
 
+        if (storeRepository.findByName(storeDTO.getName()) != null) {
+            throw new CustomException(ErrorCode.STORE_NAME_ALREADY_REGISTERED);
+        }
+
         store.setName(storeDTO.getName());
         store.setLat(storeDTO.getLat());
         store.setLon(storeDTO.getLon());
@@ -241,12 +264,14 @@ public class PartnerService {
 
         storeRepository.save(store);
 
+        logger.info("Store with ID '{}' updated successfully by partner '{}'", storeId, email);
+
         ResponseDTO responseDTO = new ResponseDTO("상점 정보 수정 완료", HttpStatus.OK, null);
         return ResponseEntity.ok(responseDTO);
     }
 
-
-    // 7 파트너의 상점 정보 삭제
+    // 상점 정보 삭제
+    @Transactional
     public ResponseEntity<ResponseDTO> deleteStore(String email, Long storeId) {
         Partner partner = partnerRepository.findByEmail(email);
         if (partner == null) {
@@ -260,9 +285,10 @@ public class PartnerService {
 
         storeRepository.delete(store);
 
+        logger.info("Store with ID '{}' deleted successfully by partner '{}'", storeId, email);
+
         ResponseDTO responseDTO = new ResponseDTO("상점이 삭제되었습니다.", HttpStatus.OK, null);
         return ResponseEntity.ok(responseDTO);
     }
-
-
 }
+

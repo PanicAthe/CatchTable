@@ -1,10 +1,12 @@
-package panicathe.catchtable.dto.user;
+package panicathe.catchtable.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import lombok.Builder;
 import lombok.Getter;
 
 @Getter
-public class UserLoginDTO {
+@Builder
+public class LoginDTO {
 
     @NotBlank
     private String email;

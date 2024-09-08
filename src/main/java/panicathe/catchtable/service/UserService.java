@@ -1,11 +1,22 @@
 package panicathe.catchtable.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import panicathe.catchtable.dto.*;
+import panicathe.catchtable.dto.reservation.CreateReservationDTO;
+import panicathe.catchtable.dto.reservation.ReservationDetailDTO;
+import panicathe.catchtable.dto.review.CreateReviewDTO;
+import panicathe.catchtable.dto.review.ReviewDetailForUserDTO;
+import panicathe.catchtable.dto.review.UpdateReviewDTO;
+import panicathe.catchtable.dto.store.StoreByKeywordDTO;
+import panicathe.catchtable.dto.store.StoreDetailDTO;
 import panicathe.catchtable.exception.CustomException;
 import panicathe.catchtable.exception.ErrorCode;
 import panicathe.catchtable.model.Reservation;
@@ -19,6 +30,7 @@ import panicathe.catchtable.repository.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,17 +41,16 @@ public class UserService {
     private final ReservationRepository reservationRepository;
     private final ReviewRepository reviewRepository;
 
-    // 1 상점 목록 조회 (가나다순, 별점순, 거리순)
+    // 상점 목록 조회 (가나다순, 별점순, 거리순)
     public ResponseEntity<ResponseDTO> getStores(String sortBy, Double userLat, Double userLon) {
         List<Store> stores;
 
         switch (sortBy) {
-            case "rating": // 별점순 정렬, 리뷰 평균을 기준으로 정렬
-                stores = storeRepository.findAll();
-                stores.sort((s1, s2) -> Double.compare(calculateAverageRating(s2), calculateAverageRating(s1)));
+            case "rating": // 별점순 정렬
+                stores = storeRepository.findAllByOrderByAverageRatingDesc(); // DB에서 바로 정렬
                 break;
             case "distance": // 거리순 정렬
-                stores = storeRepository.findAll();
+                stores = storeRepository.findAll(); // 거리는 메모리 내에서 계산
                 stores.sort((s1, s2) -> {
                     double distance1 = calculateDistance(userLat, userLon, s1.getLat(), s1.getLon());
                     double distance2 = calculateDistance(userLat, userLon, s2.getLat(), s2.getLon());
@@ -59,22 +70,31 @@ public class UserService {
                         .lat(store.getLat())
                         .lon(store.getLon())
                         .description(store.getDescription())
-                        .averageRating(calculateAverageRating(store))
-                        .reviewCount(store.getReviews().size()) // 리뷰 개수
+                        .averageRating(store.getAverageRating())
+                        .reviewCount(store.getReviews().size())
                         .build())
-                .toList();
+                .collect(Collectors.toList());
 
         ResponseDTO response = new ResponseDTO("상점 목록 조회 성공", HttpStatus.OK, storeDtos);
         return ResponseEntity.ok(response);
     }
 
-    // 별점 평균 계산 함수
-    private double calculateAverageRating(Store store) {
-        List<Review> reviews = store.getReviews();
-        return reviews.stream()
-                .mapToInt(Review::getRating)
-                .average()
-                .orElse(0.0);
+    // 상점 키워드로 조회
+    public ResponseEntity<ResponseDTO> getStoreNamesByKeyword(String keyword) {
+        Pageable limit = PageRequest.of(0, 10);
+
+        // 이름에 키워드를 포함하는 상점 조회
+        Page<Store> stores = storeRepository.findByNameContainingIgnoreCase(keyword, limit);
+
+        List<StoreByKeywordDTO> storeDtos = stores.stream()
+                .map(store -> StoreByKeywordDTO.builder()
+                        .id(store.getId())
+                        .name(store.getName())
+                        .build())
+                .toList();
+
+        ResponseDTO response = new ResponseDTO("상점 목록 조회 성공", HttpStatus.OK, storeDtos);
+        return ResponseEntity.ok(response);
     }
 
     // 거리 계산 함수 (haversine formula를 이용한 계산)
@@ -89,19 +109,19 @@ public class UserService {
         return R * c; // 거리 반환 (킬로미터 단위)
     }
 
+    // 상점 상세 정보
+    public ResponseEntity<ResponseDTO> getStoreDetails(Long storeId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new CustomException(ErrorCode.STORE_NOT_FOUND));
 
-    // 2 상점 상세 정보
-    public ResponseEntity<ResponseDTO> getStoreDetails(String name) {
-        // 상점 이름으로 검색
-        Store store = storeRepository.findByName(name);
-
-        if (store == null) {
-            throw new CustomException(ErrorCode.STORE_NOT_FOUND);
-        }
-
-        // 상점의 평균 평점과 리뷰 개수 계산
-        double averageRating = calculateAverageRating(store);
-        int reviewCount = store.getReviews().size();
+        // 리뷰 리스트를 DTO로 변환
+        List<ReviewDetailForUserDTO> reviewDTOList = store.getReviews().stream()
+                .map(review -> ReviewDetailForUserDTO.builder()
+                        .id(review.getId())
+                        .content(review.getContent())
+                        .rating(review.getRating())
+                        .build())
+                .collect(Collectors.toList());
 
         // StoreDetailDTO로 매핑
         StoreDetailDTO storeDetailDTO = StoreDetailDTO.builder()
@@ -110,8 +130,9 @@ public class UserService {
                 .lat(store.getLat())
                 .lon(store.getLon())
                 .description(store.getDescription())
-                .averageRating(averageRating)
-                .reviewCount(reviewCount)
+                .averageRating(store.getAverageRating())
+                .reviewCount(store.getReviews().size())
+                .reviews(reviewDTOList) // 리뷰 리스트 추가
                 .build();
 
         // 응답 생성
@@ -119,9 +140,9 @@ public class UserService {
         return ResponseEntity.ok(response);
     }
 
-
-    // 3 상점 예약
-    public ResponseEntity<ResponseDTO> makeReservation(ReservationDTO reservationDTO, String userEmail) {
+    // 상점 예약
+    @Transactional
+    public ResponseEntity<ResponseDTO> makeReservation(CreateReservationDTO reservationDTO, String userEmail) {
         User user = userRepository.findByEmail(userEmail);
         if (user == null) {
             throw new CustomException(ErrorCode.USER_NOT_EXIST);
@@ -143,13 +164,18 @@ public class UserService {
         return ResponseEntity.ok(response);
     }
 
-    // 4 방문 확정(예약시간 10분전까지 가능)
+    // 방문 확정(예약시간 10분전까지만 가능)
+    @Transactional
     public ResponseEntity<ResponseDTO> confirmVisit(Long reservationId, String userEmail) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RESERVATION_NOT_FOUND));
         if (!reservation.getUser().getEmail().equals(userEmail)) {
             throw new CustomException(ErrorCode.UNAUTHORIZED);
         }
+
+        if(!reservation.isReservationConfirmed())
+            throw new CustomException(ErrorCode.RESERVATION_NOT_ALLOWED);
+
         LocalDateTime now = LocalDateTime.now();
         if (now.isAfter(reservation.getReservationTime().minusMinutes(10))) {
             throw new CustomException(ErrorCode.CANNOT_CONFIRM_VISIT);
@@ -161,8 +187,9 @@ public class UserService {
         return ResponseEntity.ok(response);
     }
 
-    // 5 리뷰 작성
-    public ResponseEntity<ResponseDTO> writeReview(ReviewDTO reviewDTO, String userEmail) {
+    // 리뷰 작성
+    @Transactional
+    public ResponseEntity<ResponseDTO> writeReview(CreateReviewDTO reviewDTO, String userEmail) {
         Reservation reservation = reservationRepository.findById(reviewDTO.getReservationId())
                 .orElseThrow(() -> new CustomException(ErrorCode.RESERVATION_NOT_FOUND));
 
@@ -193,7 +220,7 @@ public class UserService {
         return ResponseEntity.ok(response);
     }
 
-    // 6. 유저 본인의 예약 조회 (시간순)
+    // 유저 본인의 예약 조회 (시간순)
     public ResponseEntity<ResponseDTO> getUserReservations(String userEmail) {
         User user = userRepository.findByEmail(userEmail);
         if (user == null) {
@@ -207,7 +234,7 @@ public class UserService {
                 .map(reservation -> ReservationDetailDTO.builder()
                         .reservationId(reservation.getId())
                         .storeName(reservation.getStore().getName())
-                        .reservationTime(reservation.getReservationTime())
+                        .reservationTime(String.valueOf(reservation.getReservationTime()))
                         .reservationConfirmed(reservation.isReservationConfirmed())
                         .visitedConfirmed(reservation.isVisitedConfirmed())
                         .build())
@@ -217,7 +244,7 @@ public class UserService {
         return ResponseEntity.ok(response);
     }
 
-    // 7. 유저 본인의 리뷰 확인
+    // 유저 본인의 리뷰 확인
     public ResponseEntity<ResponseDTO> getUserReviews(String userEmail) {
         User user = userRepository.findByEmail(userEmail);
         if (user == null) {
@@ -227,8 +254,8 @@ public class UserService {
         // 유저가 작성한 리뷰 목록 조회
         List<Review> reviews = reviewRepository.findAllByUser(user);
 
-        List<ReviewDTO> reviewDTOs = reviews.stream()
-                .map(review -> ReviewDTO.builder()
+        List<ReviewDetailForUserDTO> reviewDTOs = reviews.stream()
+                .map(review -> ReviewDetailForUserDTO.builder()
                         .id(review.getId())
                         .storeName(review.getStore().getName())
                         .content(review.getContent())
@@ -241,6 +268,28 @@ public class UserService {
         return ResponseEntity.ok(response);
     }
 
+    // 리뷰 수정
+    @Transactional
+    public ResponseEntity<ResponseDTO> updateReview(UpdateReviewDTO updateReviewDTO, String userEmail, int reviewedId) {
+        // 예약 ID로 리뷰를 조회
+        Review review = reviewRepository.findById(reviewedId)
+                .orElseThrow(() -> new CustomException(ErrorCode.REVIEW_NOT_FOUND));
 
+        // 사용자가 작성한 리뷰인지 확인
+        if (!review.getUser().getEmail().equals(userEmail)) {
+            throw new CustomException(ErrorCode.UNAUTHORIZED);
+        }
+
+        // 리뷰 내용 업데이트
+        review.setContent(updateReviewDTO.getContent());
+        review.setRating(updateReviewDTO.getRating());
+
+        // 수정된 리뷰 저장
+        reviewRepository.save(review);
+
+        ResponseDTO response = new ResponseDTO("리뷰가 수정되었습니다.", HttpStatus.OK, null);
+        return ResponseEntity.ok(response);
+    }
+    
 }
 

@@ -8,9 +8,9 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import panicathe.catchtable.dto.LoginOrUpdateDTO;
 import panicathe.catchtable.dto.ResponseDTO;
 import panicathe.catchtable.dto.partner.PartnerDTO;
-import panicathe.catchtable.dto.user.UserDTO;
 import panicathe.catchtable.dto.user.UserSignUpDTO;
 import panicathe.catchtable.jwt.JwtProvider;
 import panicathe.catchtable.model.Partner;
@@ -19,8 +19,6 @@ import panicathe.catchtable.repository.PartnerRepository;
 import panicathe.catchtable.repository.UserRepository;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 public class AuthServiceTest {
@@ -105,7 +103,7 @@ public class AuthServiceTest {
 
     @Test
     void updateUserInfo_Success() {
-        UserDTO userDTO = UserDTO.builder()
+        LoginOrUpdateDTO userDTO = LoginOrUpdateDTO.builder()
                 .password("newPassword")
                 .build();
         User user = User.builder()

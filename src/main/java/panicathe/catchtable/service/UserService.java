@@ -12,9 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 import panicathe.catchtable.dto.*;
 import panicathe.catchtable.dto.reservation.CreateReservationDTO;
 import panicathe.catchtable.dto.reservation.ReservationDetailDTO;
-import panicathe.catchtable.dto.review.CreateReviewDTO;
 import panicathe.catchtable.dto.review.ReviewDetailForUserDTO;
-import panicathe.catchtable.dto.review.UpdateReviewDTO;
+import panicathe.catchtable.dto.review.CreateOrUpdateReviewDTO;
 import panicathe.catchtable.dto.store.StoreByKeywordDTO;
 import panicathe.catchtable.dto.store.StoreDetailDTO;
 import panicathe.catchtable.exception.CustomException;
@@ -47,10 +46,10 @@ public class UserService {
 
         switch (sortBy) {
             case "rating": // 별점순 정렬
-                stores = storeRepository.findAllByOrderByAverageRatingDesc(); // DB에서 바로 정렬
+                stores = storeRepository.findAllByOrderByAverageRatingDesc();
                 break;
             case "distance": // 거리순 정렬
-                stores = storeRepository.findAll(); // 거리는 메모리 내에서 계산
+                stores = storeRepository.findAll();
                 stores.sort((s1, s2) -> {
                     double distance1 = calculateDistance(userLat, userLon, s1.getLat(), s1.getLon());
                     double distance2 = calculateDistance(userLat, userLon, s2.getLat(), s2.getLon());
@@ -117,7 +116,7 @@ public class UserService {
         // 리뷰 리스트를 DTO로 변환
         List<ReviewDetailForUserDTO> reviewDTOList = store.getReviews().stream()
                 .map(review -> ReviewDetailForUserDTO.builder()
-                        .id(review.getId())
+                        .reviewId(review.getId())
                         .content(review.getContent())
                         .rating(review.getRating())
                         .build())
@@ -177,7 +176,7 @@ public class UserService {
             throw new CustomException(ErrorCode.RESERVATION_NOT_ALLOWED);
 
         LocalDateTime now = LocalDateTime.now();
-        if (now.isAfter(reservation.getReservationTime().minusMinutes(10))) {
+        if (now.isAfter(reservation.getReservationTime().minusMinutes(9))) {
             throw new CustomException(ErrorCode.CANNOT_CONFIRM_VISIT);
         }
         reservation.setVisitedConfirmed(true);
@@ -189,8 +188,8 @@ public class UserService {
 
     // 리뷰 작성
     @Transactional
-    public ResponseEntity<ResponseDTO> writeReview(CreateReviewDTO reviewDTO, String userEmail) {
-        Reservation reservation = reservationRepository.findById(reviewDTO.getReservationId())
+    public ResponseEntity<ResponseDTO> writeReview(CreateOrUpdateReviewDTO reviewDTO, String userEmail, Long reservationId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RESERVATION_NOT_FOUND));
 
         if (!reservation.getUser().getEmail().equals(userEmail)) { // 이메일 불일치
@@ -215,6 +214,7 @@ public class UserService {
 
         reservation.setReviewed(true);
         reservationRepository.save(reservation);
+        review.getStore().updateAverageRating();
 
         ResponseDTO response = new ResponseDTO("리뷰가 작성되었습니다.", HttpStatus.OK, null);
         return ResponseEntity.ok(response);
@@ -256,7 +256,7 @@ public class UserService {
 
         List<ReviewDetailForUserDTO> reviewDTOs = reviews.stream()
                 .map(review -> ReviewDetailForUserDTO.builder()
-                        .id(review.getId())
+                        .reviewId(review.getId())
                         .storeName(review.getStore().getName())
                         .content(review.getContent())
                         .rating(review.getRating())
@@ -270,7 +270,7 @@ public class UserService {
 
     // 리뷰 수정
     @Transactional
-    public ResponseEntity<ResponseDTO> updateReview(UpdateReviewDTO updateReviewDTO, String userEmail, int reviewedId) {
+    public ResponseEntity<ResponseDTO> updateReview(CreateOrUpdateReviewDTO createOrUpdateReviewDTO, String userEmail, int reviewedId) {
         // 예약 ID로 리뷰를 조회
         Review review = reviewRepository.findById(reviewedId)
                 .orElseThrow(() -> new CustomException(ErrorCode.REVIEW_NOT_FOUND));
@@ -281,8 +281,9 @@ public class UserService {
         }
 
         // 리뷰 내용 업데이트
-        review.setContent(updateReviewDTO.getContent());
-        review.setRating(updateReviewDTO.getRating());
+        review.setContent(createOrUpdateReviewDTO.getContent());
+        review.setRating(createOrUpdateReviewDTO.getRating());
+        review.getStore().updateAverageRating();
 
         // 수정된 리뷰 저장
         reviewRepository.save(review);

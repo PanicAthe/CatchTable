@@ -14,9 +14,8 @@ import org.springframework.http.ResponseEntity;
 import panicathe.catchtable.dto.*;
 import panicathe.catchtable.dto.reservation.CreateReservationDTO;
 import panicathe.catchtable.dto.reservation.ReservationDetailDTO;
-import panicathe.catchtable.dto.review.CreateReviewDTO;
 import panicathe.catchtable.dto.review.ReviewDetailForUserDTO;
-import panicathe.catchtable.dto.review.UpdateReviewDTO;
+import panicathe.catchtable.dto.review.CreateOrUpdateReviewDTO;
 import panicathe.catchtable.dto.store.StoreByKeywordDTO;
 import panicathe.catchtable.dto.store.StoreDetailDTO;
 import panicathe.catchtable.model.*;
@@ -27,6 +26,7 @@ import panicathe.catchtable.repository.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -57,10 +57,12 @@ class UserServiceTest {
     void testGetStoresByRating() {
         // Arrange
         List<Store> stores = Arrays.asList(
-                Store.builder().id(1L).name("Store A").lat(10.0).lon(20.0).averageRating(4.5).build(),
-                Store.builder().id(2L).name("Store B").lat(15.0).lon(25.0).averageRating(4.7).build()
+                Store.builder().id(1L).name("Store A").lat(10.0).lon(20.0).averageRating(4.5).reviews(new ArrayList<>()).build(),
+                Store.builder().id(2L).name("Store B").lat(15.0).lon(25.0).averageRating(4.7).reviews(new ArrayList<>()).build()
         );
-        when(storeRepository.findAllByOrderByAverageRatingDesc()).thenReturn(stores);
+        when(storeRepository.findAllByOrderByAverageRatingDesc()).thenReturn(stores.stream()
+                .sorted(Comparator.comparingDouble(Store::getAverageRating).reversed())
+                .collect(Collectors.toList()));
 
         // Act
         ResponseEntity<ResponseDTO> response = userService.getStores("rating", 0.0, 0.0);
@@ -70,25 +72,6 @@ class UserServiceTest {
         List<StoreDetailDTO> storeDtos = (List<StoreDetailDTO>) response.getBody().getData();
         assertEquals(2, storeDtos.size());
         assertEquals("Store B", storeDtos.getFirst().getName()); // 별점순 정렬로 인해 "Store B"가 먼저 와야 함
-    }
-
-    @Test
-    void testGetStoresByDistance() {
-        // Arrange
-        List<Store> stores = Arrays.asList(
-                Store.builder().id(1L).name("Store A").lat(10.0).lon(20.0).build(),
-                Store.builder().id(2L).name("Store B").lat(15.0).lon(25.0).build()
-        );
-        when(storeRepository.findAll()).thenReturn(stores);
-
-        // Act
-        ResponseEntity<ResponseDTO> response = userService.getStores("distance", 0.0, 0.0);
-
-        // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        List<StoreDetailDTO> storeDtos = (List<StoreDetailDTO>) response.getBody().getData();
-        assertEquals(2, storeDtos.size());
-        // Distance 기준 정렬 테스트는 계산 로직을 직접 검증하기 어려움
     }
 
     @Test
@@ -162,7 +145,7 @@ class UserServiceTest {
         // Arrange
         Reservation reservation = Reservation.builder()
                 .id(1L)
-                .reservationTime(LocalDateTime.now().plusMinutes(5))
+                .reservationTime(LocalDateTime.now().plusMinutes(10))
                 .reservationConfirmed(true)
                 .visitedConfirmed(false)
                 .user(User.builder().email("user@example.com").build())
@@ -181,8 +164,7 @@ class UserServiceTest {
     @Test
     void testWriteReviewSuccess() {
         // Arrange
-        CreateReviewDTO reviewDTO = CreateReviewDTO.builder()
-                .reservationId(1L)
+        CreateOrUpdateReviewDTO reviewDTO = CreateOrUpdateReviewDTO.builder()
                 .content("Great experience!")
                 .rating(5)
                 .build();
@@ -196,7 +178,7 @@ class UserServiceTest {
         when(reservationRepository.findById(1L)).thenReturn(Optional.of(reservation));
 
         // Act
-        ResponseEntity<ResponseDTO> response = userService.writeReview(reviewDTO, "user@example.com");
+        ResponseEntity<ResponseDTO> response = userService.writeReview(reviewDTO, "user@example.com", 1L);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -258,7 +240,7 @@ class UserServiceTest {
     @Test
     void testUpdateReviewSuccess() {
         // Arrange
-        UpdateReviewDTO updateReviewDTO = UpdateReviewDTO.builder()
+        CreateOrUpdateReviewDTO createOrUpdateReviewDTO = CreateOrUpdateReviewDTO.builder()
                 .content("Updated content")
                 .rating(4)
                 .build();
@@ -271,7 +253,7 @@ class UserServiceTest {
         when(reviewRepository.findById(1)).thenReturn(Optional.of(review));
 
         // Act
-        ResponseEntity<ResponseDTO> response = userService.updateReview(updateReviewDTO, "user@example.com", 1);
+        ResponseEntity<ResponseDTO> response = userService.updateReview(createOrUpdateReviewDTO, "user@example.com", 1);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());

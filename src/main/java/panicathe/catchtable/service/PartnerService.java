@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import panicathe.catchtable.dto.*;
 import panicathe.catchtable.dto.reservation.ReservationTimeTableDTO;
 import panicathe.catchtable.dto.review.ReviewDetailForPartnerDTO;
-import panicathe.catchtable.dto.review.ReviewDetailForUserDTO;
 import panicathe.catchtable.dto.store.CreateOrUpdateStoreDTO;
 import panicathe.catchtable.dto.store.StoreDTO;
 import panicathe.catchtable.exception.CustomException;
@@ -97,6 +96,57 @@ public class PartnerService {
         return ResponseEntity.ok(responseDTO);
     }
 
+    // 상점 정보 수정
+    @Transactional
+    public ResponseEntity<ResponseDTO> updateStore(String email, Long storeId, CreateOrUpdateStoreDTO storeDTO) {
+        Partner partner = partnerRepository.findByEmail(email);
+        if (partner == null) {
+            throw new CustomException(ErrorCode.PARTNER_NOT_EXIST);
+        }
+
+        Store store = storeRepository.findByIdAndPartner(storeId, partner);
+        if (store == null) {
+            throw new CustomException(ErrorCode.STORE_NOT_FOUND);
+        }
+
+        if ( !store.getName().equals(storeDTO.getName()) && storeRepository.findByName(storeDTO.getName()) != null) {
+            throw new CustomException(ErrorCode.STORE_NAME_ALREADY_REGISTERED);
+        }
+
+        store.setName(storeDTO.getName());
+        store.setLat(storeDTO.getLat());
+        store.setLon(storeDTO.getLon());
+        store.setDescription(storeDTO.getDescription());
+
+        storeRepository.save(store);
+
+        logger.info("Store with ID '{}' updated successfully by partner '{}'", storeId, email);
+
+        ResponseDTO responseDTO = new ResponseDTO("상점 정보 수정 완료", HttpStatus.OK, null);
+        return ResponseEntity.ok(responseDTO);
+    }
+
+    // 상점 정보 삭제
+    @Transactional
+    public ResponseEntity<ResponseDTO> deleteStore(String email, Long storeId) {
+        Partner partner = partnerRepository.findByEmail(email);
+        if (partner == null) {
+            throw new CustomException(ErrorCode.PARTNER_NOT_EXIST);
+        }
+
+        Store store = storeRepository.findByIdAndPartner(storeId, partner);
+        if (store == null) {
+            throw new CustomException(ErrorCode.STORE_NOT_FOUND);
+        }
+
+        storeRepository.delete(store);
+
+        logger.info("Store with ID '{}' deleted successfully by partner '{}'", storeId, email);
+
+        ResponseDTO responseDTO = new ResponseDTO("상점이 삭제되었습니다.", HttpStatus.OK, null);
+        return ResponseEntity.ok(responseDTO);
+    }
+
     // 상점 리뷰 조회
     public ResponseEntity<ResponseDTO> getStoreReviews(String email, Long storeId) {
         Partner partner = partnerRepository.findByEmail(email);
@@ -140,6 +190,7 @@ public class PartnerService {
         }
 
         reviewRepository.delete(review);
+        store.updateAverageRating();
 
         logger.info("Review with ID '{}' deleted successfully from store '{}'", reviewId, storeId);
 
@@ -147,7 +198,7 @@ public class PartnerService {
         return ResponseEntity.ok(responseDTO);
     }
 
-    // 파트너의 상점 예약 정보 조회 (해당 날짜만)
+    // 파트너의 상점 예약 정보 조회 (해당하는 날짜만)
     public ResponseEntity<ResponseDTO> getStoreReservations(String email, LocalDate date) {
         Partner partner = partnerRepository.findByEmail(email);
         if (partner == null) {
@@ -173,6 +224,7 @@ public class PartnerService {
                                         .sorted(Comparator.comparing(Reservation::getReservationTime))
                                         .map(reservation -> ReservationTimeTableDTO.builder()
                                                 .reservationId(reservation.getId())
+                                                .storeName(reservation.getStore().getName())
                                                 .reservationTime(reservation.getReservationTime().toString())
                                                 .reservationConfirmed(reservation.isReservationConfirmed())
                                                 .visitedConfirmed(reservation.isVisitedConfirmed())
@@ -240,55 +292,6 @@ public class PartnerService {
         return ResponseEntity.ok(responseDTO);
     }
 
-    // 상점 정보 수정
-    @Transactional
-    public ResponseEntity<ResponseDTO> updateStore(String email, Long storeId, CreateOrUpdateStoreDTO storeDTO) {
-        Partner partner = partnerRepository.findByEmail(email);
-        if (partner == null) {
-            throw new CustomException(ErrorCode.PARTNER_NOT_EXIST);
-        }
 
-        Store store = storeRepository.findByIdAndPartner(storeId, partner);
-        if (store == null) {
-            throw new CustomException(ErrorCode.STORE_NOT_FOUND);
-        }
-
-        if (storeRepository.findByName(storeDTO.getName()) != null) {
-            throw new CustomException(ErrorCode.STORE_NAME_ALREADY_REGISTERED);
-        }
-
-        store.setName(storeDTO.getName());
-        store.setLat(storeDTO.getLat());
-        store.setLon(storeDTO.getLon());
-        store.setDescription(storeDTO.getDescription());
-
-        storeRepository.save(store);
-
-        logger.info("Store with ID '{}' updated successfully by partner '{}'", storeId, email);
-
-        ResponseDTO responseDTO = new ResponseDTO("상점 정보 수정 완료", HttpStatus.OK, null);
-        return ResponseEntity.ok(responseDTO);
-    }
-
-    // 상점 정보 삭제
-    @Transactional
-    public ResponseEntity<ResponseDTO> deleteStore(String email, Long storeId) {
-        Partner partner = partnerRepository.findByEmail(email);
-        if (partner == null) {
-            throw new CustomException(ErrorCode.PARTNER_NOT_EXIST);
-        }
-
-        Store store = storeRepository.findByIdAndPartner(storeId, partner);
-        if (store == null) {
-            throw new CustomException(ErrorCode.STORE_NOT_FOUND);
-        }
-
-        storeRepository.delete(store);
-
-        logger.info("Store with ID '{}' deleted successfully by partner '{}'", storeId, email);
-
-        ResponseDTO responseDTO = new ResponseDTO("상점이 삭제되었습니다.", HttpStatus.OK, null);
-        return ResponseEntity.ok(responseDTO);
-    }
 }
 

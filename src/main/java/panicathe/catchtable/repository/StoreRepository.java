@@ -30,8 +30,5 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
     // 평균 별점으로 내림차순 정렬된 상점 리스트 조회
     List<Store> findAllByOrderByAverageRatingDesc();
 
-    // 리뷰와 함께 상점을 조회 (N+1 문제 해결)
-    @EntityGraph(attributePaths = "reviews")
-    List<Store> findAllWithReviews();
 }
 

@@ -6,7 +6,7 @@ import lombok.Getter;
 
 @Getter
 @Builder
-public class LoginDTO {
+public class LoginOrUpdateDTO {
 
     @NotBlank
     private String email;

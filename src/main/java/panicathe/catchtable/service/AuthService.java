@@ -1,6 +1,5 @@
 package panicathe.catchtable.service;
 
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,8 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import panicathe.catchtable.dto.ResponseDTO;
 import panicathe.catchtable.dto.partner.PartnerDTO;
-import panicathe.catchtable.dto.user.UserDTO;
-import panicathe.catchtable.dto.LoginDTO;
+import panicathe.catchtable.dto.LoginOrUpdateDTO;
 import panicathe.catchtable.dto.user.UserSignUpDTO;
 import panicathe.catchtable.exception.CustomException;
 import panicathe.catchtable.exception.ErrorCode;
@@ -29,6 +27,25 @@ public class AuthService {
     private final PartnerRepository partnerRepository;
     private final JwtProvider jwtProvider;
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    // 파트너 가입
+    @Transactional
+    public ResponseEntity<ResponseDTO> partnerSignUp(PartnerDTO partnerDTO) {
+
+        if(partnerRepository.existsByEmail(partnerDTO.getEmail())){
+            throw new CustomException(ErrorCode.PARTNER_EMAIL_ALREADY_REGISTERED);
+        }
+        if (userRepository.existsByEmail(partnerDTO.getEmail())) {
+            throw new CustomException(ErrorCode.USER_EMAIL_ALREADY_REGISTERED);
+        }
+
+        partnerRepository.save(Partner.builder()
+                .email(partnerDTO.getEmail())
+                .password(passwordEncoder.encode(partnerDTO.getPassword())).build());
+
+        ResponseDTO responseDTO = new ResponseDTO("파트너 가입이 완료되었습니다.", HttpStatus.OK, null);
+        return ResponseEntity.ok(responseDTO);
+    }
 
     // 유저 회원가입
     @Transactional
@@ -54,27 +71,8 @@ public class AuthService {
         return ResponseEntity.ok(responseDTO);
     }
 
-    // 파트너 가입
-    @Transactional
-    public ResponseEntity<ResponseDTO> partnerSignUp(PartnerDTO partnerDTO) {
-
-        if(partnerRepository.existsByEmail(partnerDTO.getEmail())){
-            throw new CustomException(ErrorCode.PARTNER_EMAIL_ALREADY_REGISTERED);
-        }
-        if (userRepository.existsByEmail(partnerDTO.getEmail())) {
-            throw new CustomException(ErrorCode.USER_EMAIL_ALREADY_REGISTERED);
-        }
-
-        partnerRepository.save(Partner.builder()
-                .email(partnerDTO.getEmail())
-                .password(passwordEncoder.encode(partnerDTO.getPassword())).build());
-
-        ResponseDTO responseDTO = new ResponseDTO("파트너 가입이 완료되었습니다.", HttpStatus.OK, null);
-        return ResponseEntity.ok(responseDTO);
-    }
-
     // 파트너 로그인
-    public ResponseEntity<ResponseDTO> partnerLogIn(LoginDTO dto) {
+    public ResponseEntity<ResponseDTO> partnerLogIn(LoginOrUpdateDTO dto) {
 
         String token = null;
 
@@ -104,7 +102,7 @@ public class AuthService {
     }
 
     // 유저 로그인
-    public ResponseEntity<ResponseDTO> userLogIn(LoginDTO dto) {
+    public ResponseEntity<ResponseDTO> userLogIn(LoginOrUpdateDTO dto) {
 
         String token = null;
 
@@ -151,7 +149,7 @@ public class AuthService {
 
     // 유저 정보 수정
     @Transactional
-    public ResponseEntity<ResponseDTO> updateUserInfo(UserDTO userDTO, String email) {
+    public ResponseEntity<ResponseDTO> updateUserInfo(LoginOrUpdateDTO userDTO, String email) {
         User user = userRepository.findByEmail(email);
         if (user == null) {
             throw new CustomException(ErrorCode.USER_NOT_EXIST);

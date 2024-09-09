@@ -10,7 +10,7 @@ import lombok.Getter;
 @Builder
 public class ReviewDetailForUserDTO {
 
-    private Long id;
+    private Long reviewId;
 
     private Long reservationId;
 

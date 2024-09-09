@@ -1,8 +1,6 @@
 package panicathe.catchtable.service;
 
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -40,7 +38,6 @@ public class PartnerService {
     private final StoreRepository storeRepository;
     private final ReviewRepository reviewRepository;
     private final ReservationRepository reservationRepository;
-    private final Logger logger = LoggerFactory.getLogger(PartnerService.class);
 
     // 상점 등록
     @Transactional
@@ -65,8 +62,6 @@ public class PartnerService {
 
         storeRepository.save(store);
 
-        logger.info("Store '{}' registered successfully by partner '{}'", storeDTO.getName(), email);
-
         ResponseDTO responseDTO = new ResponseDTO("상점 등록이 완료되었습니다.", HttpStatus.OK, null);
         return ResponseEntity.ok(responseDTO);
     }
@@ -78,7 +73,7 @@ public class PartnerService {
             throw new CustomException(ErrorCode.PARTNER_NOT_EXIST);
         }
 
-        List<Store> stores = storeRepository.findAllByPartner(partner);
+        List<Store> stores = storeRepository.findAllByPartner(partner); // 파트너로 상점들 조회
 
         List<StoreDTO> storeDTOs = stores.stream()
                 .map(store -> StoreDTO.builder()
@@ -119,9 +114,7 @@ public class PartnerService {
         store.setDescription(storeDTO.getDescription());
 
         storeRepository.save(store);
-
-        logger.info("Store with ID '{}' updated successfully by partner '{}'", storeId, email);
-
+        
         ResponseDTO responseDTO = new ResponseDTO("상점 정보 수정 완료", HttpStatus.OK, null);
         return ResponseEntity.ok(responseDTO);
     }
@@ -140,9 +133,7 @@ public class PartnerService {
         }
 
         storeRepository.delete(store);
-
-        logger.info("Store with ID '{}' deleted successfully by partner '{}'", storeId, email);
-
+        
         ResponseDTO responseDTO = new ResponseDTO("상점이 삭제되었습니다.", HttpStatus.OK, null);
         return ResponseEntity.ok(responseDTO);
     }
@@ -190,10 +181,8 @@ public class PartnerService {
         }
 
         reviewRepository.delete(review);
-        store.updateAverageRating();
-
-        logger.info("Review with ID '{}' deleted successfully from store '{}'", reviewId, storeId);
-
+        store.updateAverageRating(); // 스토어 평균 평점 업데이트
+        
         ResponseDTO responseDTO = new ResponseDTO("리뷰 삭제 완료", HttpStatus.OK, null);
         return ResponseEntity.ok(responseDTO);
     }
@@ -259,8 +248,6 @@ public class PartnerService {
         reservation.setReservationConfirmed(true);
         reservationRepository.save(reservation);
 
-        logger.info("Reservation with ID '{}' confirmed for store '{}'", reservationId, storeId);
-
         ResponseDTO responseDTO = new ResponseDTO("예약이 승인되었습니다.", HttpStatus.OK, null);
         return ResponseEntity.ok(responseDTO);
     }
@@ -285,8 +272,6 @@ public class PartnerService {
 
         reservation.setReservationConfirmed(false);
         reservationRepository.save(reservation);
-
-        logger.info("Reservation with ID '{}' cancelled for store '{}'", reservationId, storeId);
 
         ResponseDTO responseDTO = new ResponseDTO("예약이 취소되었습니다.", HttpStatus.OK, null);
         return ResponseEntity.ok(responseDTO);

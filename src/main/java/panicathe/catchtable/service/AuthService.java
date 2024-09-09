@@ -40,8 +40,8 @@ public class AuthService {
         }
 
         partnerRepository.save(Partner.builder()
-                .email(partnerDTO.getEmail())
-                .password(passwordEncoder.encode(partnerDTO.getPassword())).build());
+                .email(partnerDTO.getEmail()) 
+                .password(passwordEncoder.encode(partnerDTO.getPassword())).build()); //비밀번호는 인코딩
 
         ResponseDTO responseDTO = new ResponseDTO("파트너 가입이 완료되었습니다.", HttpStatus.OK, null);
         return ResponseEntity.ok(responseDTO);
@@ -64,7 +64,7 @@ public class AuthService {
         userRepository.save(User.builder()
                 .email(userDTO.getEmail())
                 .phone(userDTO.getPhone())
-                .password(passwordEncoder.encode(userDTO.getPassword()))
+                .password(passwordEncoder.encode(userDTO.getPassword())) // 비밀번호는 인코딩
                 .build());
 
         ResponseDTO responseDTO = new ResponseDTO("회원가입이 완료되었습니다.", HttpStatus.OK, null);
@@ -90,13 +90,12 @@ public class AuthService {
             if(!isMatched)
                 throw new CustomException(ErrorCode.PASSWORD_NOT_MATCHED);
 
-            token = jwtProvider.create(email, "ROLE_PARTNER");
+            token = jwtProvider.create(email, "ROLE_PARTNER"); // role 포함 토큰 발급
 
         } catch (Exception exception) {
             exception.printStackTrace();
         }
 
-        System.out.println(token);
         ResponseDTO responseDTO = new ResponseDTO("로그인 성공.", HttpStatus.OK, token);
         return ResponseEntity.ok(responseDTO);
     }
@@ -120,13 +119,12 @@ public class AuthService {
             if(!isMatched)
                 throw new CustomException(ErrorCode.PASSWORD_NOT_MATCHED);
 
-            token = jwtProvider.create(email, "ROLE_USER");
+            token = jwtProvider.create(email, "ROLE_USER"); // role 포함 토큰 발급
 
         } catch (Exception exception) {
             exception.printStackTrace();
         }
 
-        System.out.println(token);
         ResponseDTO responseDTO = new ResponseDTO("로그인 성공.", HttpStatus.OK, token);
         return ResponseEntity.ok(responseDTO);
     }
@@ -140,8 +138,7 @@ public class AuthService {
         }
 
         partner.setEmail(partnerDTO.getEmail());
-        // 파트너 정보 업데이트
-        partner.setPassword(passwordEncoder.encode(partnerDTO.getPassword()));
+        partner.setPassword(passwordEncoder.encode(partnerDTO.getPassword())); // 비밀번호는 인코딩
         partnerRepository.save(partner);
 
         return ResponseEntity.ok(new ResponseDTO("파트너 정보 수정이 완료되었습니다.", HttpStatus.OK, null));
@@ -155,8 +152,7 @@ public class AuthService {
             throw new CustomException(ErrorCode.USER_NOT_EXIST);
         }
 
-        // 유저 정보 업데이트
-        user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
+        user.setPassword(passwordEncoder.encode(userDTO.getPassword())); // 비밀번호는 인코딩
         userRepository.save(user);
 
         return ResponseEntity.ok(new ResponseDTO("유저 정보 수정이 완료되었습니다.", HttpStatus.OK, null));

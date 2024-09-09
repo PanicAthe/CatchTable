@@ -122,7 +122,6 @@ public class UserService {
                         .build())
                 .collect(Collectors.toList());
 
-        // StoreDetailDTO로 매핑
         StoreDetailDTO storeDetailDTO = StoreDetailDTO.builder()
                 .id(store.getId())
                 .name(store.getName())
@@ -131,10 +130,9 @@ public class UserService {
                 .description(store.getDescription())
                 .averageRating(store.getAverageRating())
                 .reviewCount(store.getReviews().size())
-                .reviews(reviewDTOList) // 리뷰 리스트 추가
+                .reviews(reviewDTOList)
                 .build();
 
-        // 응답 생성
         ResponseDTO response = new ResponseDTO("상점 상세 정보 조회 성공", HttpStatus.OK, storeDetailDTO);
         return ResponseEntity.ok(response);
     }
@@ -176,7 +174,7 @@ public class UserService {
             throw new CustomException(ErrorCode.RESERVATION_NOT_ALLOWED);
 
         LocalDateTime now = LocalDateTime.now();
-        if (now.isAfter(reservation.getReservationTime().minusMinutes(9))) {
+        if (now.isAfter(reservation.getReservationTime().minusMinutes(9))) { // 10시 예약이라면 9시 51분 부터 방문 확정 불가
             throw new CustomException(ErrorCode.CANNOT_CONFIRM_VISIT);
         }
         reservation.setVisitedConfirmed(true);
@@ -214,7 +212,7 @@ public class UserService {
 
         reservation.setReviewed(true);
         reservationRepository.save(reservation);
-        review.getStore().updateAverageRating();
+        review.getStore().updateAverageRating(); // 스토어 평균 평점 업데이트
 
         ResponseDTO response = new ResponseDTO("리뷰가 작성되었습니다.", HttpStatus.OK, null);
         return ResponseEntity.ok(response);
@@ -271,7 +269,6 @@ public class UserService {
     // 리뷰 수정
     @Transactional
     public ResponseEntity<ResponseDTO> updateReview(CreateOrUpdateReviewDTO createOrUpdateReviewDTO, String userEmail, int reviewedId) {
-        // 예약 ID로 리뷰를 조회
         Review review = reviewRepository.findById(reviewedId)
                 .orElseThrow(() -> new CustomException(ErrorCode.REVIEW_NOT_FOUND));
 
@@ -280,12 +277,10 @@ public class UserService {
             throw new CustomException(ErrorCode.UNAUTHORIZED);
         }
 
-        // 리뷰 내용 업데이트
         review.setContent(createOrUpdateReviewDTO.getContent());
         review.setRating(createOrUpdateReviewDTO.getRating());
-        review.getStore().updateAverageRating();
+        review.getStore().updateAverageRating(); // 스토어 평균 평점 업데이트
 
-        // 수정된 리뷰 저장
         reviewRepository.save(review);
 
         ResponseDTO response = new ResponseDTO("리뷰가 수정되었습니다.", HttpStatus.OK, null);
